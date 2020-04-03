@@ -46,6 +46,6 @@ yarn add youtube-video-element
 
 Include in your app javascript (e.g. src/App.js)
 ```js
-import 'player-chrome';
+import 'youtube-video-element';
 ```
 This will register the custom elements with the browser so they can be used as HTML.
