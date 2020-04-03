@@ -60,6 +60,27 @@ function getIdFromURL(url) {
   return (match && match[1]) ? match[1] : url;
 }
 
+// Handle multiple players with one YT API load
+let ytReady = false;
+let ytReadyQueue = [];
+
+function onYTReady(callback) {
+  if (ytReady) {
+    callback();
+  } else {
+    ytReadyQueue.push(callback);
+  }
+}
+
+function handleYoutubeAPILoad() {
+  ytReady = true;
+  ytReadyQueue.forEach((callback) => {
+    callback();
+  });
+  ytReadyQueue = [];
+}
+
+
 class YoutubeVideoElement extends HTMLElement {
   constructor() {
     super();
@@ -72,24 +93,6 @@ class YoutubeVideoElement extends HTMLElement {
     if (src) {
       this.load();
     }
-  }
-
-  // Handle multiple players with one YT API load
-  static ytReady = false;
-  static ytReadyQueue = [];
-  static onYTReady = function(callback) {
-    if (this.ytReady) {
-      callback();
-    } else {
-      this.ytReadyQueue.push(callback);
-    }
-  };
-  static handleYoutubeAPILoad() {
-    this.ytReady = true;
-    this.ytReadyQueue.forEach((callback) => {
-      callback();
-    });
-    this.ytReadyQueue = [];
   }
 
   load() {
@@ -113,7 +116,7 @@ class YoutubeVideoElement extends HTMLElement {
     this.shadowRoot.querySelector('#iframeContainer').appendChild(iframeTemplate.content.cloneNode(true));
     const iframe = this.shadowRoot.querySelector('iframe');
 
-    YoutubeVideoElement.onYTReady(()=>{
+    onYTReady(() => {
       const onPlayerReady = (event) => {
         this.dispatchEvent(new Event('volumechange'));
 
@@ -257,7 +260,7 @@ function loadYoutubeAPI() {
   const firstScriptTag = document.getElementsByTagName('script')[0];
   firstScriptTag.parentNode.insertBefore(YouTubeScriptTag, firstScriptTag);
 
-  window.onYouTubeIframeAPIReady = YoutubeVideoElement.handleYoutubeAPILoad.bind(YoutubeVideoElement);
+  window.onYouTubeIframeAPIReady = handleYoutubeAPILoad;
 }
 
 if (window.customElements.get('youtube-video') || window.YoutubeVideoElement) {
