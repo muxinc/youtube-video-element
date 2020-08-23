@@ -33,12 +33,13 @@ function getIframeTemplate(params) {
   const { id } = params;
   const controls = params.controls ? 1 : 0;
   const template = document.createElement('template');
+  const initialTime = params.initialTime ? initialTime : 0;
 
   template.innerHTML = `
     <iframe
       id="player"
       type="text/html"
-      src="https://www.youtube.com/embed/${id}?enablejsapi=1&modestbranding=1&rel=0&showinfo=0&controls=${controls}"
+      src="https://www.youtube.com/embed/${id}?t=${initialTime}&enablejsapi=1&modestbranding=1&iv_load_policy=3&rel=0&showinfo=0&controls=${controls}&disablekb=${!controls}"
       frameborder="0"
       allowfullscreen
       allow="accelerometer; autoplay; encrypted-media; fullscreen; gyroscope; picture-in-picture; xr-spatial-tracking"
@@ -99,6 +100,8 @@ class YoutubeVideoElement extends HTMLElement {
     // Destroy previous videos
     this.ytPlayer = null;
     this.shadowRoot.querySelector('#iframeContainer').innerHTML = '';
+    this.readyState = 0;
+    this.dispatchEvent(new Event('loadstart'));
 
     const src = this.getAttribute('src');
 
@@ -110,7 +113,8 @@ class YoutubeVideoElement extends HTMLElement {
 
     const iframeTemplate = getIframeTemplate({
       id: getIdFromURL(src),
-      controls: !!this.hasAttribute('controls')
+      controls: !!this.hasAttribute('controls'),
+      initialTime: this.getAttribute('initialtime')
     });
 
     this.shadowRoot.querySelector('#iframeContainer').appendChild(iframeTemplate.content.cloneNode(true));
@@ -118,6 +122,8 @@ class YoutubeVideoElement extends HTMLElement {
 
     onYTReady(() => {
       const onPlayerReady = (event) => {
+        this.readyState = 1;
+        this.dispatchEvent(new Event('loadedmetadata'));
         this.dispatchEvent(new Event('volumechange'));
 
         this.timeupdateInterval = setInterval(()=>{
