@@ -39,7 +39,7 @@ function getIframeTemplate(params) {
     <iframe
       id="player"
       type="text/html"
-      src="https://www.youtube.com/embed/${id}?t=${initialTime}&enablejsapi=1&modestbranding=1&iv_load_policy=3&rel=0&showinfo=0&controls=${controls}&disablekb=${!controls}"
+      src="https://www.youtube.com/embed/${id}?start=${initialTime}&enablejsapi=1&modestbranding=1&iv_load_policy=3&rel=0&showinfo=0&controls=${controls}&disablekb=${!controls}"
       frameborder="0"
       allowfullscreen
       allow="accelerometer; autoplay; encrypted-media; fullscreen; gyroscope; picture-in-picture; xr-spatial-tracking"
