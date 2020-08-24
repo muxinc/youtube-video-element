@@ -33,7 +33,7 @@ function getIframeTemplate(params) {
   const { id } = params;
   const controls = params.controls ? 1 : 0;
   const template = document.createElement('template');
-  const initialTime = params.initialTime ? params.initialTime : 0;
+  const initialTime = params.initialTime ? Math.floor(params.initialTime) : 0;
 
   template.innerHTML = `
     <iframe
