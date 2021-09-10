@@ -172,22 +172,27 @@ class YoutubeVideoElement extends HTMLElement {
   */
 
   get paused() {
+    if (!this.ytPlayer) return;
     return !!([-1,0,2,5].indexOf(this.ytPlayer.getPlayerState()) > -1);
   }
 
   play() {
+    if (!this.ytPlayer) return;
     this.ytPlayer.playVideo();
   }
 
   pause() {
+    if (!this.ytPlayer) return;
     this.ytPlayer.pauseVideo();
   }
 
   get currentTime() {
+    if (!this.ytPlayer) return;
     return this.ytPlayer.getCurrentTime();
   }
 
   set currentTime(timeInSeconds) {
+    if (!this.ytPlayer) return;
     // allowSeekAhead is true here,though should technically be false
     // when scrubbing w/ thumbnail previews
     this.ytPlayer.seekTo(timeInSeconds, true);
@@ -203,6 +208,7 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   set muted(mute) {
+    if (!this.ytPlayer) return;
     if (mute) {
       this.ytPlayer.mute()
     } else {
@@ -224,6 +230,7 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   set volume(volume) {
+    if (!this.ytPlayer) return;
     this.ytPlayer.setVolume(volume * 100);
 
     // Leave time for post message API to update
@@ -233,6 +240,7 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   get duration() {
+    if (!this.ytPlayer) return;
     return this.ytPlayer.getDuration();
   }
 
@@ -248,10 +256,12 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   get playbackRate() {
+    if (!this.ytPlayer) return;
     return this.ytPlayer.getPlaybackRate();
   }
 
   set playbackRate(rate) {
+    if (!this.ytPlayer) return;
     this.ytPlayer.setPlaybackRate(rate);
   }
 }
