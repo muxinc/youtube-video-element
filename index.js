@@ -193,7 +193,12 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   pause() {
-    if (!this.ytPlayer) return;
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.pause();
+      });
+      return;
+    }
     this.ytPlayer.pauseVideo();
   }
 
@@ -316,9 +321,7 @@ if (window.customElements.get('youtube-video') || window.YoutubeVideoElement) {
 } else {
   window.YoutubeVideoElement = YoutubeVideoElement;
   window.customElements.define('youtube-video', YoutubeVideoElement);
-  setTimeout(() => {
-    loadYoutubeAPI();
-  }, 5000);
+  loadYoutubeAPI();
 }
 
 export default YoutubeVideoElement;
