@@ -76,8 +76,7 @@ function onYTReady(callback) {
 function handleYoutubeAPILoad() {
   ytReady = true;
   ytReadyQueue.forEach((callback) => {
-    console.log('debug calling callback inside ytReadyQueue');
-    setTimeout(() => callback());
+    callback();
   });
   ytReadyQueue = [];
 }
@@ -124,13 +123,10 @@ class YoutubeVideoElement extends HTMLElement {
 
     onYTReady(() => {
       const onPlayerReady = (event) => {
-        console.log('debug onPlayerReady', event.target.setVolume, this.ytPlayer.setVolume);
         this.readyState = 1;
 
         this.onPlayerReadyQueue.forEach((callback) => {
-          console.log('debug calling callback inside ytReadyQueue');
           callback();
-          // setTimeout(() => callback());
         });
         this.onPlayerReadyQueue = [];
         this.dispatchEvent(new Event('loadedmetadata'));
@@ -155,7 +151,6 @@ class YoutubeVideoElement extends HTMLElement {
         console.log('onPlayerError', event.data, event);
       }
 
-      console.log('debug assign this.ytPlayer');
       this.ytPlayer = new YT.Player(iframe, {
         events: {
           'onReady': onPlayerReady,
@@ -163,7 +158,6 @@ class YoutubeVideoElement extends HTMLElement {
           'onError': onPlayerError
         }
       });
-      console.log('debug assigned this.ytPlayer', this.ytPlayer.setVolume);
 
       this.ytPlayer.addEventListener('onPlaybackRateChange', e => {
         this.dispatchEvent(new Event('ratechange'));
@@ -189,17 +183,13 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   play() {
-    return new Promise((resolve, reject) => {
-      if (this.ytPlayer) {
-        this.ytPlayer.playVideo();
-        resolve();
-      } else {
-        onYTReady(() => {
-          this.ytPlayer.playVideo();
-          resolve();
-        });
-      }
-    });
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.play();
+      });
+      return;
+    }
+    this.ytPlayer.playVideo();
   }
 
   pause() {
@@ -213,7 +203,12 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   set currentTime(timeInSeconds) {
-    if (!this.ytPlayer) return;
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.currentTime = timeInSeconds;
+      });
+      return;
+    }
     // allowSeekAhead is true here,though should technically be false
     // when scrubbing w/ thumbnail previews
     this.ytPlayer.seekTo(timeInSeconds, true);
@@ -229,7 +224,12 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   set muted(mute) {
-    if (!this.ytPlayer) return;
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.muted = mute;
+      });
+      return;
+    }
     if (mute) {
       this.ytPlayer.mute()
     } else {
@@ -250,23 +250,13 @@ class YoutubeVideoElement extends HTMLElement {
     return 1;
   }
 
-  set test (t) {
-    console.log('debug test', t);
-  }
-
   set volume(volume) {
     if (!this.ytPlayer) {
-      console.log('no this.ytPlayer... will set volume when ready');
       this.onPlayerReadyQueue.push(() => {
         this.volume = volume;
       });
-      // onYTReady(() => {
-      //   this.volume = volume;
-      // });
       return;
     }
-
-    console.log('debug calling this.ytPlayer.setVolume', this.ytPlayer.setVolume, this.ytPlayer, volume);
 
     this.ytPlayer.setVolume(volume * 100);
 
@@ -298,7 +288,12 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   set playbackRate(rate) {
-    if (!this.ytPlayer) return;
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.playbackRate = rate;
+      });
+      return;
+    }
     this.ytPlayer.setPlaybackRate(rate);
   }
 }
