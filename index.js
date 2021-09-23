@@ -76,7 +76,8 @@ function onYTReady(callback) {
 function handleYoutubeAPILoad() {
   ytReady = true;
   ytReadyQueue.forEach((callback) => {
-    callback();
+    console.log('debug calling callback inside ytReadyQueue');
+    setTimeout(() => callback());
   });
   ytReadyQueue = [];
 }
@@ -122,6 +123,7 @@ class YoutubeVideoElement extends HTMLElement {
 
     onYTReady(() => {
       const onPlayerReady = (event) => {
+        console.log('debug onPlayerReady', event.target.setVolume, this.ytPlayer.setVolume);
         this.readyState = 1;
         this.dispatchEvent(new Event('loadedmetadata'));
         this.dispatchEvent(new Event('volumechange'));
@@ -145,6 +147,7 @@ class YoutubeVideoElement extends HTMLElement {
         console.log('onPlayerError', event.data, event);
       }
 
+      console.log('debug assign this.ytPlayer');
       this.ytPlayer = new YT.Player(iframe, {
         events: {
           'onReady': onPlayerReady,
@@ -152,6 +155,7 @@ class YoutubeVideoElement extends HTMLElement {
           'onError': onPlayerError
         }
       });
+      console.log('debug assigned this.ytPlayer', this.ytPlayer.setVolume);
 
       this.ytPlayer.addEventListener('onPlaybackRateChange', e => {
         this.dispatchEvent(new Event('ratechange'));
@@ -172,13 +176,22 @@ class YoutubeVideoElement extends HTMLElement {
   */
 
   get paused() {
-    if (!this.ytPlayer) return;
+    if (!this.ytPlayer) return true;
     return !!([-1,0,2,5].indexOf(this.ytPlayer.getPlayerState()) > -1);
   }
 
   play() {
-    if (!this.ytPlayer) return;
-    this.ytPlayer.playVideo();
+    return new Promise((resolve, reject) => {
+      if (this.ytPlayer) {
+        this.ytPlayer.playVideo();
+        resolve();
+      } else {
+        onYTReady(() => {
+          this.ytPlayer.playVideo();
+          resolve();
+        });
+      }
+    });
   }
 
   pause() {
@@ -229,8 +242,21 @@ class YoutubeVideoElement extends HTMLElement {
     return 1;
   }
 
+  set test (t) {
+    console.log('debug test', t);
+  }
+
   set volume(volume) {
-    if (!this.ytPlayer) return;
+    if (!this.ytPlayer) {
+      console.log('no this.ytPlayer... will set volume when ready');
+      onYTReady(() => {
+        this.volume = volume;
+      });
+      return
+    }
+
+    console.log('debug calling this.ytPlayer.setVolume', this.ytPlayer.setVolume, this.ytPlayer, volume);
+
     this.ytPlayer.setVolume(volume * 100);
 
     // Leave time for post message API to update
@@ -284,7 +310,9 @@ if (window.customElements.get('youtube-video') || window.YoutubeVideoElement) {
 } else {
   window.YoutubeVideoElement = YoutubeVideoElement;
   window.customElements.define('youtube-video', YoutubeVideoElement);
-  loadYoutubeAPI();
+  setTimeout(() => {
+    loadYoutubeAPI();
+  }, 5000);
 }
 
 export default YoutubeVideoElement;
