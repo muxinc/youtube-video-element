@@ -91,6 +91,7 @@ class YoutubeVideoElement extends HTMLElement {
     this.shadowRoot.appendChild(template.content.cloneNode(true));
 
     const src = this.getAttribute('src');
+    this.onPlayerReadyQueue = [];
 
     if (src) {
       this.load();
@@ -125,6 +126,13 @@ class YoutubeVideoElement extends HTMLElement {
       const onPlayerReady = (event) => {
         console.log('debug onPlayerReady', event.target.setVolume, this.ytPlayer.setVolume);
         this.readyState = 1;
+
+        this.onPlayerReadyQueue.forEach((callback) => {
+          console.log('debug calling callback inside ytReadyQueue');
+          callback();
+          // setTimeout(() => callback());
+        });
+        this.onPlayerReadyQueue = [];
         this.dispatchEvent(new Event('loadedmetadata'));
         this.dispatchEvent(new Event('volumechange'));
 
@@ -249,10 +257,13 @@ class YoutubeVideoElement extends HTMLElement {
   set volume(volume) {
     if (!this.ytPlayer) {
       console.log('no this.ytPlayer... will set volume when ready');
-      onYTReady(() => {
+      this.onPlayerReadyQueue.push(() => {
         this.volume = volume;
       });
-      return
+      // onYTReady(() => {
+      //   this.volume = volume;
+      // });
+      return;
     }
 
     console.log('debug calling this.ytPlayer.setVolume', this.ytPlayer.setVolume, this.ytPlayer, volume);
