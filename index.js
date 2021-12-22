@@ -90,6 +90,7 @@ class YoutubeVideoElement extends HTMLElement {
     this.shadowRoot.appendChild(template.content.cloneNode(true));
 
     const src = this.getAttribute('src');
+    this.onPlayerReadyQueue = [];
 
     if (src) {
       this.load();
@@ -123,6 +124,11 @@ class YoutubeVideoElement extends HTMLElement {
     onYTReady(() => {
       const onPlayerReady = (event) => {
         this.readyState = 1;
+
+        this.onPlayerReadyQueue.forEach((callback) => {
+          callback();
+        });
+        this.onPlayerReadyQueue = [];
         this.dispatchEvent(new Event('loadedmetadata'));
         this.dispatchEvent(new Event('volumechange'));
 
@@ -172,22 +178,42 @@ class YoutubeVideoElement extends HTMLElement {
   */
 
   get paused() {
+    if (!this.ytPlayer) return true;
     return !!([-1,0,2,5].indexOf(this.ytPlayer.getPlayerState()) > -1);
   }
 
   play() {
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.play();
+      });
+      return;
+    }
     this.ytPlayer.playVideo();
   }
 
   pause() {
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.pause();
+      });
+      return;
+    }
     this.ytPlayer.pauseVideo();
   }
 
   get currentTime() {
+    if (!this.ytPlayer) return;
     return this.ytPlayer.getCurrentTime();
   }
 
   set currentTime(timeInSeconds) {
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.currentTime = timeInSeconds;
+      });
+      return;
+    }
     // allowSeekAhead is true here,though should technically be false
     // when scrubbing w/ thumbnail previews
     this.ytPlayer.seekTo(timeInSeconds, true);
@@ -203,6 +229,12 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   set muted(mute) {
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.muted = mute;
+      });
+      return;
+    }
     if (mute) {
       this.ytPlayer.mute()
     } else {
@@ -224,6 +256,13 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   set volume(volume) {
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.volume = volume;
+      });
+      return;
+    }
+
     this.ytPlayer.setVolume(volume * 100);
 
     // Leave time for post message API to update
@@ -233,6 +272,7 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   get duration() {
+    if (!this.ytPlayer) return;
     return this.ytPlayer.getDuration();
   }
 
@@ -248,10 +288,17 @@ class YoutubeVideoElement extends HTMLElement {
   }
 
   get playbackRate() {
+    if (!this.ytPlayer) return;
     return this.ytPlayer.getPlaybackRate();
   }
 
   set playbackRate(rate) {
+    if (!this.ytPlayer) {
+      this.onPlayerReadyQueue.push(() => {
+        this.playbackRate = rate;
+      });
+      return;
+    }
     this.ytPlayer.setPlaybackRate(rate);
   }
 }
