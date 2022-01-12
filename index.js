@@ -37,8 +37,6 @@ function getIframeTemplate(params) {
 
   template.innerHTML = `
     <iframe
-      id="player"
-      type="text/html"
       src="https://www.youtube.com/embed/${id}?start=${initialTime}&enablejsapi=1&modestbranding=1&iv_load_policy=3&rel=0&showinfo=0&controls=${controls}&disablekb=${!controls}"
       frameborder="0"
       allowfullscreen
