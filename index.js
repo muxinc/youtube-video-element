@@ -1,169 +1,268 @@
-// Build the HTML/CSS of the element
-const template = document.createElement('template');
+// https://developers.google.com/youtube/iframe_api_reference
 
-template.innerHTML = `
+const EMBED_BASE = 'https://www.youtube.com/embed';
+const API_URL = 'https://www.youtube.com/iframe_api';
+const API_GLOBAL = 'YT';
+const API_GLOBAL_READY = 'onYouTubeIframeAPIReady';
+const MATCH_SRC =
+  /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/;
 
+const templateShadowDOM = document.createElement('template');
+templateShadowDOM.innerHTML = `
 <style>
-:host {
-  display: inline-block;
-  box-sizing: border-box;
-  position: relative;
-  width: 640px;
-  height: 360px;
-  background-color: #000;
-}
-
-iframe,
-#iframeContainer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-
-  border: none;
-  overflow: hidden;
-}
+  :host {
+    display: inline-block;
+    line-height: 0;
+    position: relative;
+    width: 300px;
+    height: 150px;
+  }
+  iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
 </style>
-
-<div id="iframeContainer"></div>
 `;
 
-function getIframeTemplate(params) {
-  const { id } = params;
-  const controls = params.controls ? 1 : 0;
-  const template = document.createElement('template');
-  const initialTime = params.initialTime ? Math.floor(params.initialTime) : 0;
-
-  template.innerHTML = `
-    <iframe
-      src="https://www.youtube.com/embed/${id}?start=${initialTime}&enablejsapi=1&modestbranding=1&iv_load_policy=3&rel=0&showinfo=0&controls=${controls}&disablekb=${!controls}"
-      frameborder="0"
-      allowfullscreen
-      allow="accelerometer; autoplay; encrypted-media; fullscreen; gyroscope; picture-in-picture; xr-spatial-tracking"
-    ></iframe>
-  `;
-
-  return template;
-}
-
-/*
-  This video had an issue where it would start to play but then go back to paused.
-  Wondering if it's some sort of playlist issue?
-  https://www.youtube.com/watch?v=M7lc1UVf-VE
-*/
-
-function getIdFromURL(url) {
-  const regExp = /^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[1]) ? match[1] : url;
-}
-
-// Handle multiple players with one YT API load
-let ytReady = false;
-let ytReadyQueue = [];
-
-function onYTReady(callback) {
-  if (ytReady) {
-    callback();
-  } else {
-    ytReadyQueue.push(callback);
-  }
-}
-
-function handleYoutubeAPILoad() {
-  ytReady = true;
-  ytReadyQueue.forEach((callback) => {
-    callback();
-  });
-  ytReadyQueue = [];
-}
-
-
 class YoutubeVideoElement extends HTMLElement {
+  static observedAttributes = [
+    'autoplay',
+    'controls',
+    'crossorigin',
+    'loop',
+    'muted',
+    'playsinline',
+    'poster',
+    'preload',
+    'src',
+  ];
+
+  #options;
+  #readyState = 0;
+  #seeking = false;
+  isLoaded = false;
+
   constructor() {
     super();
 
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot.appendChild(template.content.cloneNode(true));
+    this.shadowRoot.append(templateShadowDOM.content.cloneNode(true));
 
-    const src = this.getAttribute('src');
-    this.onPlayerReadyQueue = [];
-
-    if (src) {
-      this.load();
-    }
+    this.loadComplete = new PublicPromise();
   }
 
-  load() {
-    // Destroy previous videos
-    this.ytPlayer = null;
-    this.shadowRoot.querySelector('#iframeContainer').innerHTML = '';
-    this.readyState = 0;
-    this.dispatchEvent(new Event('loadstart'));
+  async load() {
+    if (this.hasLoaded) {
+      this.loadComplete = new PublicPromise();
+      this.isLoaded = false;
+    }
+    this.hasLoaded = true;
 
-    const src = this.getAttribute('src');
+    this.#readyState = 0;
+    this.dispatchEvent(new Event('emptied'));
 
-    if (!src) {
-      // Should throw an code 4 error. We'll get ot that.
-      console.error('YoutubeVideoElement: No src was set when load() was called.');
+    let oldApi = this.api;
+    this.api = null;
+
+    // Wait 1 tick to allow other attributes to be set.
+    await Promise.resolve();
+
+    oldApi?.destroy();
+
+    if (!this.src) {
       return;
     }
 
-    const iframeTemplate = getIframeTemplate({
-      id: getIdFromURL(src),
-      controls: !!this.hasAttribute('controls'),
-      initialTime: this.getAttribute('initialtime')
+    this.dispatchEvent(new Event('loadstart'));
+
+    this.#options = {
+      autoplay: this.autoplay,
+      controls: this.controls,
+      loop: this.loop,
+      mute: this.defaultMuted,
+      playsinline: this.playsInline,
+      preload: this.preload ?? 'metadata',
+      origin: location.origin,
+      enablejsapi: 1,
+      showinfo: 0,
+      rel: 0,
+      iv_load_policy: 3,
+      modestbranding: 1,
+    };
+
+    const matches = this.src.match(MATCH_SRC);
+    const metaId = matches && matches[1];
+    const src = `${EMBED_BASE}/${metaId}?${serialize(
+      boolToBinary(this.#options)
+    )}`;
+    let iframe = this.shadowRoot.querySelector('iframe');
+    if (!iframe) {
+      iframe = createEmbedIframe({ src });
+      this.shadowRoot.append(iframe);
+    }
+
+    const YT = await loadScript(API_URL, API_GLOBAL, API_GLOBAL_READY);
+    this.api = new YT.Player(iframe, {
+      events: {
+        onReady: () => {
+          this.#readyState = 1; // HTMLMediaElement.HAVE_METADATA
+          this.dispatchEvent(new Event('loadedmetadata'));
+          this.dispatchEvent(new Event('durationchange'));
+          this.dispatchEvent(new Event('volumechange'));
+          this.dispatchEvent(new Event('loadcomplete'));
+          this.isLoaded = true;
+          this.loadComplete.resolve();
+        },
+        onError: (error) => console.error(error),
+      },
     });
 
-    this.shadowRoot.querySelector('#iframeContainer').appendChild(iframeTemplate.content.cloneNode(true));
-    const iframe = this.shadowRoot.querySelector('iframe');
+    /* onStateChange
+      -1 (unstarted)
+      0 (ended)
+      1 (playing)
+      2 (paused)
+      3 (buffering)
+      5 (video cued).
+    */
 
-    onYTReady(() => {
-      const onPlayerReady = (event) => {
-        this.readyState = 1;
-
-        this.onPlayerReadyQueue.forEach((callback) => {
-          callback();
-        });
-        this.onPlayerReadyQueue = [];
-        this.dispatchEvent(new Event('loadedmetadata'));
-        this.dispatchEvent(new Event('volumechange'));
-
-        this.timeupdateInterval = setInterval(()=>{
-          this.dispatchEvent(new Event('timeupdate'));
-        }, 25);
-      }
-
-      const onPlayerStateChange = (event) => {
-        const state = event.data;
-
-        if (state == 1) {
+    let playFired = false;
+    this.api.addEventListener('onStateChange', (event) => {
+      const state = event.data;
+      if (
+        state === YT.PlayerState.PLAYING ||
+        state === YT.PlayerState.BUFFERING
+      ) {
+        if (!playFired) {
+          playFired = true;
           this.dispatchEvent(new Event('play'));
-        } else if (state == 2) {
-          this.dispatchEvent(new Event('pause'));
         }
       }
 
-      const onPlayerError = (event) => {
-        console.log('onPlayerError', event.data, event);
-      }
-
-      this.ytPlayer = new YT.Player(iframe, {
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange,
-          'onError': onPlayerError
+      if (state === YT.PlayerState.PLAYING) {
+        if (this.seeking) {
+          this.#seeking = false;
+          this.dispatchEvent(new Event('seeked'));
         }
-      });
+        this.#readyState = 3; // HTMLMediaElement.HAVE_FUTURE_DATA
+        this.dispatchEvent(new Event('playing'));
+      } else if (state === YT.PlayerState.PAUSED) {
+        const diff = Math.abs(this.currentTime - lastCurrentTime);
+        if (!this.seeking && diff > 0.1) {
+          this.#seeking = true;
+          this.dispatchEvent(new Event('seeking'));
+        }
+        playFired = false;
+        this.dispatchEvent(new Event('pause'));
+      }
+      if (state === YT.PlayerState.ENDED) {
+        playFired = false;
+        this.dispatchEvent(new Event('pause'));
+        this.dispatchEvent(new Event('ended'));
 
-      this.ytPlayer.addEventListener('onPlaybackRateChange', e => {
-        this.dispatchEvent(new Event('ratechange'));
-      });
+        if (this.loop) {
+          this.play();
+        }
+      }
     });
+
+    this.api.addEventListener('onPlaybackRateChange', () => {
+      this.dispatchEvent(new Event('ratechange'));
+    });
+
+    this.api.addEventListener('onVolumeChange', () => {
+      this.dispatchEvent(new Event('volumechange'));
+    });
+
+    this.api.addEventListener('onVideoProgress', () => {
+      this.dispatchEvent(new Event('timeupdate'));
+    });
+
+    await this.loadComplete;
+
+    let lastCurrentTime = 0;
+    setInterval(() => {
+      const diff = Math.abs(this.currentTime - lastCurrentTime);
+      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
+      if (this.seeking && bufferedEnd > 0.1) {
+        this.#seeking = false;
+        this.dispatchEvent(new Event('seeked'));
+      } else if (!this.seeking && diff > 0.1) {
+        this.#seeking = true;
+        this.dispatchEvent(new Event('seeking'));
+      }
+      lastCurrentTime = this.currentTime;
+    }, 50);
+
+    let lastBufferedEnd;
+    const progressInterval = setInterval(() => {
+      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
+      if (bufferedEnd >= this.duration) {
+        clearInterval(progressInterval);
+        this.#readyState = 4; // HTMLMediaElement.HAVE_ENOUGH_DATA
+      }
+      if (lastBufferedEnd != bufferedEnd) {
+        lastBufferedEnd = bufferedEnd;
+        this.dispatchEvent(new Event('progress'));
+      }
+    }, 100);
   }
 
-  connectedCallback() {
+  async attributeChangedCallback(attrName) {
+    // This is required to come before the await for resolving loadComplete.
+    switch (attrName) {
+      case 'src': {
+        this.load();
+        return;
+      }
+    }
+
+    await this.loadComplete;
+
+    switch (attrName) {
+      case 'autoplay':
+      case 'controls':
+      case 'loop':
+      case 'playsinline': {
+        if (this.#options[attrName] !== this.hasAttribute(attrName)) {
+          this.load();
+        }
+        break;
+      }
+    }
+  }
+
+  async play() {
+    await this.loadComplete;
+    // yt.playVideo doesn't return a play promise.
+    this.api?.playVideo();
+    return createPlayPromise(this);
+  }
+
+  async pause() {
+    await this.loadComplete;
+    return this.api?.pauseVideo();
+  }
+
+  get seeking() {
+    return this.#seeking;
+  }
+
+  get readyState() {
+    return this.#readyState;
+  }
+
+  // If the getter from SuperVideoElement is overridden, it's required to define
+  // the setter again too unless it's a read only property! It's a JS thing.
+
+  get src() {
+    return this.getAttribute('src');
+  }
+
+  set src(val) {
+    if (this.src == val) return;
+    this.setAttribute('src', val);
   }
 
   /* onStateChange
@@ -176,150 +275,268 @@ class YoutubeVideoElement extends HTMLElement {
   */
 
   get paused() {
-    if (!this.ytPlayer) return true;
-    return !!([-1,0,2,5].indexOf(this.ytPlayer.getPlayerState()) > -1);
-  }
-
-  play() {
-    if (!this.ytPlayer) {
-      this.onPlayerReadyQueue.push(() => {
-        this.play();
-      });
-      return;
-    }
-    this.ytPlayer.playVideo();
-  }
-
-  pause() {
-    if (!this.ytPlayer) {
-      this.onPlayerReadyQueue.push(() => {
-        this.pause();
-      });
-      return;
-    }
-    this.ytPlayer.pauseVideo();
-  }
-
-  get currentTime() {
-    if (!this.ytPlayer) return;
-    return this.ytPlayer.getCurrentTime();
-  }
-
-  set currentTime(timeInSeconds) {
-    if (!this.ytPlayer) {
-      this.onPlayerReadyQueue.push(() => {
-        this.currentTime = timeInSeconds;
-      });
-      return;
-    }
-    // allowSeekAhead is true here,though should technically be false
-    // when scrubbing w/ thumbnail previews
-    this.ytPlayer.seekTo(timeInSeconds, true);
-    this.dispatchEvent(new Event('timeupdate'));
-  }
-
-  get muted() {
-    if (this.ytPlayer) {
-      return this.ytPlayer.isMuted();
-    }
-
-    return false;
-  }
-
-  set muted(mute) {
-    if (!this.ytPlayer) {
-      this.onPlayerReadyQueue.push(() => {
-        this.muted = mute;
-      });
-      return;
-    }
-    if (mute) {
-      this.ytPlayer.mute()
-    } else {
-      this.ytPlayer.unMute()
-    }
-
-    // Leave time for post message API to update
-    setTimeout(() => {
-      this.dispatchEvent(new Event('volumechange'));
-    }, 100);
-  }
-
-  get volume() {
-    if (this.ytPlayer) {
-      return this.ytPlayer.getVolume() / 100;
-    }
-
-    return 1;
-  }
-
-  set volume(volume) {
-    if (!this.ytPlayer) {
-      this.onPlayerReadyQueue.push(() => {
-        this.volume = volume;
-      });
-      return;
-    }
-
-    this.ytPlayer.setVolume(volume * 100);
-
-    // Leave time for post message API to update
-    setTimeout(() => {
-      this.dispatchEvent(new Event('volumechange'));
-    }, 100);
+    if (!this.isLoaded) return !this.autoplay;
+    return [-1, 0, 2, 5].includes(this.api?.getPlayerState?.());
   }
 
   get duration() {
-    if (!this.ytPlayer) return;
-    return this.ytPlayer.getDuration();
+    return this.api?.getDuration?.() ?? NaN;
   }
 
-  get poster() {
-    const id = getIdFromURL(this.src);
+  get autoplay() {
+    return this.hasAttribute('autoplay');
+  }
 
-    if (id) {
-      // https://stackoverflow.com/questions/2068344/how-do-i-get-a-youtube-video-thumbnail-from-the-youtube-api?page=1&tab=votes#tab-top
-      return `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
-    } else {
-      return null;
+  set autoplay(val) {
+    if (this.autoplay == val) return;
+    if (val) this.setAttribute('autoplay', '');
+    else this.removeAttribute('autoplay');
+  }
+
+  get buffered() {
+    if (!this.isLoaded) return createTimeRanges();
+    const progress =
+      this.api?.getVideoLoadedFraction() * this.api?.getDuration();
+    if (progress > 0) {
+      return createTimeRanges(0, progress);
     }
+    return createTimeRanges();
+  }
+
+  get controls() {
+    return this.hasAttribute('controls');
+  }
+
+  set controls(val) {
+    if (this.controls == val) return;
+    if (val) this.setAttribute('controls', '');
+    else this.removeAttribute('controls');
+  }
+
+  get currentTime() {
+    return this.api?.getCurrentTime?.() ?? 0;
+  }
+
+  set currentTime(val) {
+    if (this.currentTime == val) return;
+    this.loadComplete.then(() => {
+      this.api?.seekTo(val, true);
+      if (this.paused) {
+        this.pause();
+      }
+    });
+  }
+
+  set defaultMuted(val) {
+    if (this.defaultMuted == val) return;
+    if (val) this.setAttribute('muted', '');
+    else this.removeAttribute('muted');
+  }
+
+  get defaultMuted() {
+    return this.hasAttribute('muted');
+  }
+
+  get loop() {
+    return this.hasAttribute('loop');
+  }
+
+  set loop(val) {
+    if (this.loop == val) return;
+    if (val) this.setAttribute('loop', '');
+    else this.removeAttribute('loop');
+  }
+
+  set muted(val) {
+    if (this.muted == val) return;
+    this.loadComplete.then(() => {
+      val ? this.api?.mute() : this.api?.unMute();
+    });
+  }
+
+  get muted() {
+    if (!this.isLoaded) return this.defaultMuted;
+    return this.api?.isMuted?.();
   }
 
   get playbackRate() {
-    if (!this.ytPlayer) return;
-    return this.ytPlayer.getPlaybackRate();
+    return this.api?.getPlaybackRate?.() ?? 1;
   }
 
-  set playbackRate(rate) {
-    if (!this.ytPlayer) {
-      this.onPlayerReadyQueue.push(() => {
-        this.playbackRate = rate;
+  set playbackRate(val) {
+    if (this.playbackRate == val) return;
+    this.loadComplete.then(() => {
+      this.api?.setPlaybackRate(val);
+    });
+  }
+
+  get playsInline() {
+    return this.hasAttribute('playsinline');
+  }
+
+  set playsInline(val) {
+    if (this.playsInline == val) return;
+    if (val) this.setAttribute('playsinline', '');
+    else this.removeAttribute('playsinline');
+  }
+
+  get poster() {
+    return this.getAttribute('poster');
+  }
+
+  set poster(val) {
+    if (this.poster == val) return;
+    this.setAttribute('poster', `${val}`);
+  }
+
+  set volume(val) {
+    if (this.volume == val) return;
+    this.loadComplete.then(() => {
+      this.api?.setVolume(val * 100);
+    });
+  }
+
+  get volume() {
+    if (!this.isLoaded) return 1;
+    return this.api?.getVolume() / 100;
+  }
+}
+
+const loadScriptCache = {};
+async function loadScript(src, globalName, readyFnName) {
+  if (loadScriptCache[src]) return loadScriptCache[src];
+  if (globalName && self[globalName]) {
+    await delay(0);
+    return self[globalName];
+  }
+  return (loadScriptCache[src] = new Promise(function (resolve, reject) {
+    const script = document.createElement('script');
+    script.src = src;
+    const ready = () => resolve(self[globalName]);
+    if (readyFnName) (self[readyFnName] = ready);
+    script.onload = () => !readyFnName && ready();
+    script.onerror = reject;
+    document.head.append(script);
+  }));
+}
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function promisify(fn) {
+  return (...args) =>
+    new Promise((resolve) => {
+      fn(...args, (...res) => {
+        if (res.length > 1) resolve(res);
+        else resolve(res[0]);
       });
-      return;
+    });
+}
+
+function createPlayPromise(player) {
+  return promisify((event, cb) => {
+    let fn;
+    player.addEventListener(
+      event,
+      (fn = () => {
+        player.removeEventListener(event, fn);
+        cb();
+      })
+    );
+  })('playing');
+}
+
+/**
+ * A utility to create Promises with convenient public resolve and reject methods.
+ * @return {Promise}
+ */
+class PublicPromise extends Promise {
+  constructor(executor = () => {}) {
+    let res, rej;
+    super((resolve, reject) => {
+      executor(resolve, reject);
+      res = resolve;
+      rej = reject;
+    });
+    this.resolve = res;
+    this.reject = rej;
+  }
+}
+
+function createElement(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  Object.keys(attrs).forEach(
+    (name) => attrs[name] != null && el.setAttribute(name, attrs[name])
+  );
+  el.append(...children);
+  return el;
+}
+
+const allow =
+  'accelerometer; autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture';
+
+function createEmbedIframe({ src, ...props }) {
+  return createElement('iframe', {
+    src,
+    width: '100%',
+    height: '100%',
+    allow,
+    frameborder: 0,
+    ...props,
+  });
+}
+
+function serialize(props) {
+  return Object.keys(props)
+    .map((key) => {
+      if (props[key] == null) return '';
+      return `${key}=${encodeURIComponent(props[key])}`;
+    })
+    .join('&');
+}
+
+function boolToBinary(props) {
+  let p = { ...props };
+  for (let key in p) {
+    if (p[key] === false) p[key] = 0;
+    else if (p[key] === true) p[key] = 1;
+  }
+  return p;
+}
+
+/**
+ * Creates a fake `TimeRanges` object.
+ *
+ * A TimeRanges object. This object is normalized, which means that ranges are
+ * ordered, don't overlap, aren't empty, and don't touch (adjacent ranges are
+ * folded into one bigger range).
+ *
+ * @param  {(Number|Array)} Start of a single range or an array of ranges
+ * @param  {Number} End of a single range
+ * @return {Array}
+ */
+function createTimeRanges(start, end) {
+  if (Array.isArray(start)) {
+    return createTimeRangesObj(start);
+  } else if (start == null || end == null || (start === 0 && end === 0)) {
+    return createTimeRangesObj([[0, 0]]);
+  }
+  return createTimeRangesObj([[start, end]]);
+}
+
+function createTimeRangesObj(ranges) {
+  Object.defineProperties(ranges, {
+    start: {
+      value: i => ranges[i][0]
+    },
+    end: {
+      value: i => ranges[i][1]
     }
-    this.ytPlayer.setPlaybackRate(rate);
-  }
+  });
+  return ranges;
 }
 
-function loadYoutubeAPI() {
-  if (window.onYouTubeIframeAPIReady) {
-    console.warn('YoutubeVideoElement: onYouTubeIframeAPIReady already defined. Overwriting.');
-  }
-
-  const YouTubeScriptTag = document.createElement('script');
-  YouTubeScriptTag.src = 'https://www.youtube.com/iframe_api';
-  const firstScriptTag = document.getElementsByTagName('script')[0];
-  firstScriptTag.parentNode.insertBefore(YouTubeScriptTag, firstScriptTag);
-
-  window.onYouTubeIframeAPIReady = handleYoutubeAPILoad;
-}
-
-if (window.customElements.get('youtube-video') || window.YoutubeVideoElement) {
-  console.debug('YoutubeVideoElement: <youtube-video> defined more than once.');
-} else {
-  window.YoutubeVideoElement = YoutubeVideoElement;
-  window.customElements.define('youtube-video', YoutubeVideoElement);
-  loadYoutubeAPI();
+if (!globalThis.customElements.get('youtube-video')) {
+  globalThis.customElements.define('youtube-video', YoutubeVideoElement);
 }
 
 export default YoutubeVideoElement;
