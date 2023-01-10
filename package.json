@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "dev": "npx serve .",
-    "test": "web-test-runner test.js --node-resolve"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": "muxinc/youtube-video-element",
   "keywords": [
@@ -21,9 +21,5 @@
     "custom element"
   ],
   "author": "@muxinc",
-  "license": "MIT",
-  "devDependencies": {
-    "@open-wc/testing": "^3.1.7",
-    "@web/test-runner": "^0.15.0"
-  }
+  "license": "MIT"
 }
