@@ -5,7 +5,7 @@ const API_URL = 'https://www.youtube.com/iframe_api';
 const API_GLOBAL = 'YT';
 const API_GLOBAL_READY = 'onYouTubeIframeAPIReady';
 const MATCH_SRC =
-  /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/;
+  /(?:youtu\.be\/|youtube\.com\/(?:shorts\/|embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/;
 
 const templateShadowDOM = document.createElement('template');
 templateShadowDOM.innerHTML = `
