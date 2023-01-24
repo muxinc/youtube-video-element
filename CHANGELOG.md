@@ -1,3 +1,12 @@
+# [0.2.0](https://github.com/muxinc/youtube-video-element/compare/v0.1.1...v0.2.0) (2023-01-24)
+
+
+### Bug Fixes
+
+* collapsing media element ([6d03ab6](https://github.com/muxinc/youtube-video-element/commit/6d03ab6e0b89b425f08f326627f958ed0961b28c))
+
+
+
 ## [0.1.1](https://github.com/muxinc/youtube-video-element/compare/v0.1.0...v0.1.1) (2023-01-19)
 
 
