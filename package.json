@@ -1,6 +1,6 @@
 {
   "name": "youtube-video-element",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Custom element (web component) for the YouTube player.",
   "type": "module",
   "main": "youtube-video-element.js",
