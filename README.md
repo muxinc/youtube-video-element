@@ -1,8 +1,14 @@
 # `<youtube-video>`
 
-A custom element (web component) for the YouTube player.
+[![Version](https://img.shields.io/npm/v/youtube-video-element?style=flat-square)](https://www.npmjs.com/package/youtube-video-element) 
+[![Badge size](https://img.badgesize.io/https://cdn.jsdelivr.net/npm/youtube-video-element/+esm?compression=gzip&label=gzip&style=flat-square)](https://cdn.jsdelivr.net/npm/youtube-video-element/+esm)
 
-The element API matches the HTML5 `<video>` tag, so it can be easily swapped with other media, and be compatible with other UI components that work with the video tag.
+A [custom element](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements)
+for the YouTube player with an API that matches the 
+[`<video>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video) API.
+
+- 🏄‍♂️ Compatible [`HTMLMediaElement`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement) API
+- 🕺 Seamlessly integrates with [Media Chrome](https://github.com/muxinc/media-chrome)
 
 ## Example
 

@@ -38,9 +38,4 @@ jobs:
       - uses: fregante/setup-git-user@v1
       - run: yarn install
       - run: yarn test
-      - run: . ./.github/scripts/publish.sh; release ${{ inputs.version_type }}
-        if: ${{ inputs.version_type != 'conventional' }}
-        shell: bash
-      - run: . ./.github/scripts/publish.sh; release
-        if: ${{ inputs.version_type == 'conventional' }}
-        shell: bash
+      - run: npx --yes wet-run@0.2.0 release ${{ inputs.version_type }} --changelog --github-release
