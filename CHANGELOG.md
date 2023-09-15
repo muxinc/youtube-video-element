@@ -1,3 +1,17 @@
+## [0.2.2](https://github.com/muxinc/youtube-video-element/compare/v0.2.1...v0.2.2) (2023-09-15)
+
+
+### Bug Fixes
+
+* playback state on seeking fix [#23](https://github.com/muxinc/youtube-video-element/issues/23) ([b5e60b4](https://github.com/muxinc/youtube-video-element/commit/b5e60b41fe53a40097e149966028e158ff59499f))
+
+
+### Reverts
+
+* Revert "fix: set current time bug fix #23" ([e614165](https://github.com/muxinc/youtube-video-element/commit/e614165999255d8af4f34e1c29b22a67e70259fc)), closes [#23](https://github.com/muxinc/youtube-video-element/issues/23)
+
+
+
 ## [0.2.1](https://github.com/muxinc/youtube-video-element/compare/v0.2.0...v0.2.1) (2023-09-15)
 
 
