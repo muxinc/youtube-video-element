@@ -323,6 +323,9 @@ class YoutubeVideoElement extends (globalThis.HTMLElement ?? class {}) {
     if (this.currentTime == val) return;
     this.loadComplete.then(() => {
       this.api?.seekTo(val, true);
+      if (this.paused) {
+        this.pause();
+      }
     });
   }
 
