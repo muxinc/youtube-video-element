@@ -13,7 +13,7 @@ for the YouTube player with an API that matches the
 ## Example
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/youtube-video-element@0"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/youtube-video-element@1"></script>
 <youtube-video controls src="https://www.youtube.com/watch?v=rubNgGj3pYo"></youtube-video>
 ```
 
@@ -29,7 +29,7 @@ Note the `type="module"`, that's important.
 
 ```html
 <head>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/youtube-video-element@0"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/youtube-video-element@1"></script>
 </head>
 ```
 
