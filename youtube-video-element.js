@@ -7,25 +7,27 @@ const API_GLOBAL_READY = 'onYouTubeIframeAPIReady';
 const MATCH_SRC =
   /(?:youtu\.be\/|youtube\.com\/(?:shorts\/|embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})/;
 
-const templateShadowDOM = document.createElement('template');
-templateShadowDOM.innerHTML = `
-<style>
-  :host {
-    display: inline-block;
-    line-height: 0;
-    position: relative;
-    min-width: 300px;
-    min-height: 150px;
-  }
-  iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-</style>
-`;
+const templateShadowDOM = globalThis.document?.createElement('template');
+if (templateShadowDOM) {
+  templateShadowDOM.innerHTML = /*html*/`
+  <style>
+    :host {
+      display: inline-block;
+      line-height: 0;
+      position: relative;
+      min-width: 300px;
+      min-height: 150px;
+    }
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+  `;
+}
 
-class YoutubeVideoElement extends HTMLElement {
+class YoutubeVideoElement extends (globalThis.HTMLElement ?? class {}) {
   static observedAttributes = [
     'autoplay',
     'controls',
@@ -535,7 +537,7 @@ function createTimeRangesObj(ranges) {
   return ranges;
 }
 
-if (!globalThis.customElements.get('youtube-video')) {
+if (globalThis.customElements && !globalThis.customElements.get('youtube-video')) {
   globalThis.customElements.define('youtube-video', YoutubeVideoElement);
 }
 
