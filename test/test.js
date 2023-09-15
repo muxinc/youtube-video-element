@@ -19,6 +19,43 @@ test('has default video props', async function (t) {
   t.ok(video.muted, 'is muted');
 });
 
+test('seeking while paused stays paused', async function (t) {
+  const video = await createVideoElement();
+
+  t.equal(video.paused, true, 'is paused on initialization');
+
+  await video.loadComplete;
+
+  video.currentTime = 23;
+  await promisify(video.addEventListener.bind(video))('seeked');
+
+  await delay(300); // postMessage is not instant
+  t.equal(video.paused, true, 'is paused after seek');
+  t.equal(Math.floor(video.currentTime), 23);
+});
+
+test('seeking while playing stays playing', async function (t) {
+  const video = await createVideoElement();
+
+  t.equal(video.paused, true, 'is paused on initialization');
+
+  await video.loadComplete;
+
+  try {
+    await video.play();
+  } catch (error) {
+    console.warn(error);
+  }
+  t.ok(!video.paused, 'is playing after video.play()');
+
+  video.currentTime = 23;
+  await promisify(video.addEventListener.bind(video))('seeked');
+
+  await delay(300); // postMessage is not instant
+  t.ok(!video.paused, 'is playing after seek');
+  t.equal(Math.floor(video.currentTime), 23);
+});
+
 test('volume', async function (t) {
   const video = await createVideoElement();
   await video.loadComplete;
@@ -27,7 +64,7 @@ test('volume', async function (t) {
   await delay(100); // postMessage is not instant
   t.equal(video.volume, 1, 'is all turned up. volume: ' + video.volume);
   video.volume = 0.5;
-  await delay(500); // postMessage is not instant
+  await delay(700); // postMessage is not instant
   t.equal(video.volume, 0.5, 'is half volume');
 });
 
