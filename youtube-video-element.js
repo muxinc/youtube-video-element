@@ -43,6 +43,7 @@ class YoutubeVideoElement extends (globalThis.HTMLElement ?? class {}) {
   #options;
   #readyState = 0;
   #seeking = false;
+  #seekComplete;
   isLoaded = false;
 
   constructor() {
@@ -145,6 +146,7 @@ class YoutubeVideoElement extends (globalThis.HTMLElement ?? class {}) {
       if (state === YT.PlayerState.PLAYING) {
         if (this.seeking) {
           this.#seeking = false;
+          this.#seekComplete?.resolve();
           this.dispatchEvent(new Event('seeked'));
         }
         this.#readyState = 3; // HTMLMediaElement.HAVE_FUTURE_DATA
@@ -189,6 +191,7 @@ class YoutubeVideoElement extends (globalThis.HTMLElement ?? class {}) {
       const bufferedEnd = this.buffered.end(this.buffered.length - 1);
       if (this.seeking && bufferedEnd > 0.1) {
         this.#seeking = false;
+        this.#seekComplete?.resolve();
         this.dispatchEvent(new Event('seeked'));
       } else if (!this.seeking && diff > 0.1) {
         this.#seeking = true;
@@ -236,6 +239,7 @@ class YoutubeVideoElement extends (globalThis.HTMLElement ?? class {}) {
   }
 
   async play() {
+    this.#seekComplete = null;
     await this.loadComplete;
     // yt.playVideo doesn't return a play promise.
     this.api?.playVideo();
@@ -321,10 +325,14 @@ class YoutubeVideoElement extends (globalThis.HTMLElement ?? class {}) {
 
   set currentTime(val) {
     if (this.currentTime == val) return;
+    this.#seekComplete = new PublicPromise();
     this.loadComplete.then(() => {
       this.api?.seekTo(val, true);
       if (this.paused) {
-        this.pause();
+        this.#seekComplete?.then(() => {
+          if (!this.#seekComplete) return;
+          this.api?.pauseVideo();
+        });
       }
     });
   }
