@@ -4,26 +4,27 @@
   "description": "Custom element (web component) for the YouTube player.",
   "type": "module",
   "main": "youtube-video-element.js",
-  "files": [
-    "youtube-video-element.js",
-    "README.md"
-  ],
+  "files": [],
   "scripts": {
-    "dev": "npx serve .",
-    "test": "web-test-runner test.js --node-resolve"
+    "lint": "npx eslint *.js -c ./node_modules/wet-run/.eslintrc.json",
+    "test": "wet run",
+    "dev": "wet serve"
   },
   "repository": "muxinc/youtube-video-element",
+  "author": "@muxinc",
+  "license": "MIT",
+  "homepage": "https://github.com/muxinc/youtube-video-element#readme",
+  "bugs": {
+    "url": "https://github.com/muxinc/youtube-video-element/issues"
+  },
+  "devDependencies": {
+    "wet-run": "^0.2.0"
+  },
   "keywords": [
     "youtube",
     "video",
     "player",
     "web component",
     "custom element"
-  ],
-  "author": "@muxinc",
-  "license": "MIT",
-  "devDependencies": {
-    "@open-wc/testing": "^3.1.7",
-    "@web/test-runner": "^0.15.0"
-  }
+  ]
 }
