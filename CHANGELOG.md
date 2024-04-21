@@ -1,3 +1,12 @@
+## [1.0.1](https://github.com/muxinc/youtube-video-element/compare/v1.0.0...v1.0.1) (2024-04-21)
+
+
+### Bug Fixes
+
+* upgrade dev deps & fix readme badges ([#27](https://github.com/muxinc/youtube-video-element/issues/27)) ([831e8d7](https://github.com/muxinc/youtube-video-element/commit/831e8d79546e97764b8373c0f70ae3b053ddcaf9))
+
+
+
 # [1.0.0](https://github.com/muxinc/youtube-video-element/compare/v0.2.2...v1.0.0) (2023-09-15)
 
 
