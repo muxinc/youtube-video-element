@@ -6,7 +6,7 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      version_type:
+      version:
         type: choice
         required: true
         description: Version
@@ -15,27 +15,50 @@ on:
         - patch
         - minor
         - major
+        - prerelease
+        - from-package
+        - from-git
+      prerelease:
+        type: choice
+        description: Pre-release
+        options:
+        -
+        - canary
+        - beta
+      dryrun:
+        description: 'Dry-run'
+        type: boolean
+
+run-name: Deploy ${{ inputs.version }} ${{ inputs.dryrun && '--dry-run' || '' }} ${{ inputs.prerelease && format('--prerelease {0}', inputs.prerelease) || '' }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: write
+      id-token: write
 
     env:
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       CONVENTIONAL_GITHUB_RELEASER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch all history for all tags and branches
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           # this line is required for the setup-node action to be able to run the npm publish below.
           registry-url: 'https://registry.npmjs.org'
       - uses: fregante/setup-git-user@v1
-      - run: yarn install
-      - run: yarn test
-      - run: npx --yes wet-run@0.2.0 release ${{ inputs.version_type }} --changelog --github-release
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npx --yes wet-run@1.2.2 release ${{ inputs.version }} ${{ inputs.dryrun && '--dry-run' || '' }} ${{ inputs.prerelease && format('--prerelease {0}', inputs.prerelease) || '' }} --provenance --changelog --github-release --log-level verbose
+      - name: Get NPM version
+        id: npm-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+      - name: Released ${{ steps.npm-version.outputs.current-version}} ✨
+        run: echo ${{ steps.npm-version.outputs.current-version}}

@@ -6,7 +6,7 @@
   "main": "youtube-video-element.js",
   "files": [],
   "scripts": {
-    "lint": "npx eslint *.js -c ./node_modules/wet-run/.eslintrc.json",
+    "lint": "npx eslint@8 *.js -c ./node_modules/wet-run/.eslintrc.json",
     "test": "wet run",
     "dev": "wet serve"
   },
@@ -18,7 +18,7 @@
     "url": "https://github.com/muxinc/youtube-video-element/issues"
   },
   "devDependencies": {
-    "wet-run": "^0.2.0"
+    "wet-run": "^1.2.2"
   },
   "keywords": [
     "youtube",

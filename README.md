@@ -1,7 +1,9 @@
 # `<youtube-video>`
 
-[![Version](https://img.shields.io/npm/v/youtube-video-element?style=flat-square)](https://www.npmjs.com/package/youtube-video-element) 
-[![Badge size](https://img.badgesize.io/https://cdn.jsdelivr.net/npm/youtube-video-element/+esm?compression=gzip&label=gzip&style=flat-square)](https://cdn.jsdelivr.net/npm/youtube-video-element/+esm)
+[![NPM Version](https://img.shields.io/npm/v/youtube-video-element?style=flat-square&color=informational)](https://www.npmjs.com/package/youtube-video-element) 
+[![NPM Downloads](https://img.shields.io/npm/dm/youtube-video-element?style=flat-square&color=informational&label=npm)](https://www.npmjs.com/package/youtube-video-element) 
+[![jsDelivr hits (npm)](https://img.shields.io/jsdelivr/npm/hm/youtube-video-element?style=flat-square&color=%23FF5627)](https://www.jsdelivr.com/package/npm/youtube-video-element)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/youtube-video-element?style=flat-square&color=success&label=gzip)](https://bundlephobia.com/result?p=youtube-video-element) 
 
 A [custom element](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_custom_elements)
 for the YouTube player with an API that matches the 
